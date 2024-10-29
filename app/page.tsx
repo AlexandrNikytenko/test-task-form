@@ -1,8 +1,8 @@
-"use client";
-
-import { useEffect, useState, FormEvent } from "react";
+'use client';
+import React, { useEffect, useState, FormEvent, useRef } from "react";
 import { data } from "./data/data";
 import FormResult from "./components/FormResult";
+import FormField from "./components/FormField"; // импортируем компонент
 
 interface FormData {
   [key: string]: string | number | undefined;
@@ -10,15 +10,13 @@ interface FormData {
 
 export default function Home() {
   const [result, setResult] = useState<FormData>({});
+  const refs = useRef<{ [key: string]: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null }>({});
 
   useEffect(() => {
     data.forEach((item) => {
       if (item.type === "longtext") {
-        const input = document.getElementsByName(item.name)[0];
-        if (
-          input instanceof HTMLInputElement ||
-          input instanceof HTMLTextAreaElement
-        ) {
+        const input = refs.current[item.name];
+        if (input) {
           input.addEventListener("input", () => input.setCustomValidity(""));
         }
       }
@@ -30,21 +28,15 @@ export default function Home() {
 
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
-    const formJson = Object.fromEntries(formData.entries()) as {
-      [key: string]: string;
-    };
+    const formJson = Object.fromEntries(formData.entries()) as { [key: string]: string };
 
     data.forEach((item) => {
       if (item.type === "longtext") {
         const regex = new RegExp("^" + item.validation + "$");
         const isValid = regex.test(formJson[item.name] || "");
-        const input = document.getElementsByName(item.name)[0];
+        const input = refs.current[item.name];
 
-        if (
-          input instanceof HTMLInputElement ||
-          input instanceof HTMLTextAreaElement
-        ) {
-          console.log("here textarea", item);
+        if (input) {
           if (!isValid) {
             input.setCustomValidity("invalid");
           } else {
@@ -52,9 +44,7 @@ export default function Home() {
           }
           input.reportValidity();
         } else {
-          console.warn(
-            `Element with name "${item.name}" is not an input or textarea.`
-          );
+          console.warn(`Element with name "${item.name}" is not found.`);
         }
       }
     });
@@ -73,53 +63,11 @@ export default function Home() {
         {data.map((item) => (
           <div key={item.name} className="flex flex-col space-y-1">
             <label className="text-gray-700 font-semibold">{item.name}</label>
-            {item.type === "text" && (
-              <input
-                name={item.name}
-                type="text"
-                pattern={item.validation}
-                defaultValue={
-                  item.value?.toString() || item.default_value?.toString() || ""
-                }
-                className="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            )}
-            {item.type === "number" && (
-              <input
-                name={item.name}
-                type="number"
-                defaultValue={
-                  item.value?.toString() || item.default_value?.toString() || ""
-                }
-                min={item.min_value}
-                max={item.max_value}
-                className="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            )}
-            {item.type === "dropdown" && (
-              <select
-                name={item.name}
-                defaultValue={
-                  item.value?.toString() || item.default_value?.toString() || ""
-                }
-                className="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                {item.options?.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            )}
-            {item.type === "longtext" && (
-              <textarea
-                name={item.name}
-                defaultValue={
-                  item.value?.toString() || item.default_value?.toString() || ""
-                }
-                className="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              ></textarea>
-            )}
+            <FormField
+              field={item}
+              ref={(el) => (refs.current[item.name] = el)}
+              onChange={() => refs.current[item.name]?.setCustomValidity("")}
+            />
           </div>
         ))}
         <button
