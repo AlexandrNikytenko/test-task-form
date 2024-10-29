@@ -1,56 +1,61 @@
-'use client';
-import React, { useEffect, useState, FormEvent, useRef } from "react";
+"use client";
+
+import React, { useEffect, useState, FormEvent } from "react";
 import { data } from "./data/data";
 import FormResult from "./components/FormResult";
-import FormField from "./components/FormField"; // импортируем компонент
+import FormField from "./components/FormField";
 
 interface FormData {
   [key: string]: string | number | undefined;
 }
 
 export default function Home() {
+  const [formValues, setFormValues] = useState<FormData>({});
   const [result, setResult] = useState<FormData>({});
-  const refs = useRef<{ [key: string]: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null }>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
+    const initialFormValues: FormData = {};
     data.forEach((item) => {
-      if (item.type === "longtext") {
-        const input = refs.current[item.name];
-        if (input) {
-          input.addEventListener("input", () => input.setCustomValidity(""));
-        }
-      }
+      initialFormValues[item.name] = item.value || item.default_value || "";
     });
+    setFormValues(initialFormValues);
   }, []);
+
+  function validateField(name: string, value: string) {
+    const field = data.find((item) => item.name === name);
+    if (field?.type === "longtext" && field.validation) {
+      const regex = new RegExp("^" + field.validation + "$");
+      return regex.test(value) ? "" : "invalid";
+    }
+    return "";
+  }
+
+  function handleChange(
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) {
+    const { name, value } = e.target;
+    setFormValues((prevValues) => ({ ...prevValues, [name]: value }));
+
+    const error = validateField(name, value);
+    setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
+  }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-    const formJson = Object.fromEntries(formData.entries()) as { [key: string]: string };
-
+    const formErrors: { [key: string]: string } = {};
     data.forEach((item) => {
-      if (item.type === "longtext") {
-        const regex = new RegExp("^" + item.validation + "$");
-        const isValid = regex.test(formJson[item.name] || "");
-        const input = refs.current[item.name];
-
-        if (input) {
-          if (!isValid) {
-            input.setCustomValidity("invalid");
-          } else {
-            input.setCustomValidity("");
-          }
-          input.reportValidity();
-        } else {
-          console.warn(`Element with name "${item.name}" is not found.`);
-        }
-      }
+      const error = validateField(item.name, formValues[item.name] as string);
+      if (error) formErrors[item.name] = error;
     });
 
-    if (form.checkValidity()) {
-      setResult(formJson);
+    if (Object.keys(formErrors).length === 0) {
+      setResult(formValues);
+    } else {
+      setErrors(formErrors);
     }
   }
 
@@ -65,9 +70,12 @@ export default function Home() {
             <label className="text-gray-700 font-semibold">{item.name}</label>
             <FormField
               field={item}
-              ref={(el) => (refs.current[item.name] = el)}
-              onChange={() => refs.current[item.name]?.setCustomValidity("")}
+              value={formValues[item.name] as string}
+              onChange={handleChange}
             />
+            {errors[item.name] && (
+              <span className="text-red-500">{errors[item.name]}</span>
+            )}
           </div>
         ))}
         <button

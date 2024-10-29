@@ -13,47 +13,36 @@ interface Field {
 
 interface FormFieldProps {
   field: Field;
-  ref: React.RefObject<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  value: string | number;
+  onChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => void;
 }
 
-
-const FormField = React.memo(({ field, ref, onChange }: FormFieldProps) => {
-  const inputStyles = "p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+const FormField = React.memo(({ field, value, onChange }: FormFieldProps) => {
+  const commonProps = {
+    name: field.name,
+    value: value ?? "",
+    onChange,
+    className:
+      "p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500",
+  };
 
   switch (field.type) {
     case "text":
-      return (
-        <input
-          ref={ref}
-          name={field.name}
-          type="text"
-          defaultValue={field.value?.toString() || field.default_value?.toString() || ""}
-          pattern={field.validation}
-          onChange={onChange}
-          className={inputStyles}
-        />
-      );
+      return <input {...commonProps} type="text" pattern={field.validation} />;
     case "number":
       return (
         <input
-          ref={ref}
-          name={field.name}
+          {...commonProps}
           type="number"
-          defaultValue={field.value?.toString() || field.default_value?.toString() || ""}
           min={field.min_value}
           max={field.max_value}
-          onChange={onChange}
-          className={inputStyles}        />
+        />
       );
     case "dropdown":
       return (
-        <select
-          ref={ref}
-          name={field.name}
-          defaultValue={field.value?.toString() || field.default_value?.toString() || ""}
-          onChange={onChange}
-          className={inputStyles}        >
+        <select {...commonProps}>
           {field.options?.map((option) => (
             <option key={option} value={option}>
               {option}
@@ -62,14 +51,7 @@ const FormField = React.memo(({ field, ref, onChange }: FormFieldProps) => {
         </select>
       );
     case "longtext":
-      return (
-        <textarea
-          ref={ref}
-          name={field.name}
-          defaultValue={field.value?.toString() || field.default_value?.toString() || ""}
-          onChange={onChange}
-          className={inputStyles}        />
-      );
+      return <textarea {...commonProps} />;
     default:
       return null;
   }
